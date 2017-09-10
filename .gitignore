@@ -1,0 +1,11 @@
+*.log
+*.pyc
+.cache/
+.coverage
+.idea/
+.vscode/
+coinflow.egg-info/
+build/
+dist/
+docs/build/
+wheelhouse/
