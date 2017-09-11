@@ -9,13 +9,13 @@ coinflow
 Installation
 ------------
 
-coinflow is distributed on `PyPI <https://pypi.org>`_ as a universal
-wheel and is available on Linux/macOS and Windows and supports
-Python 2.7/3.5+ and PyPy.
+coinflow is under heavy development with support of Python 3.5+ and PyPy3 in mind.
+
+To use it's code install it by issuing following commands:
 
 .. code-block:: bash
-
-    $ pip install coinflow
+    $ pip install -r requirements.txt
+    $ python setup.py install
 
 License
 -------
