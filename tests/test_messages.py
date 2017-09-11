@@ -43,7 +43,7 @@ def test_version():
     to_compare = {'checksum': checksum,
                   'magic': magic,
                   'command': 'version',
-                  'length': len(msg.payload),
+                  'length': 99,
                   'payload': {
                       'version': version,
                       'services': services,

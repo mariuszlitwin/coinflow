@@ -25,7 +25,7 @@ class Message(MessageMeta):
     HEADER_FMT = '<L12sL4s'
     """Format string used in struct.pack and struct.unpack during message creation"""
 
-    def __init__(self, command: str, payload: bytes, magic: int = None, 
+    def __init__(self, command: str, payload: dict, magic: int = None, 
                  checksum: bytes = None, *args, **kwargs) -> MessageMeta:
         """
         Constructor for 'Message' class.
@@ -34,8 +34,8 @@ class Message(MessageMeta):
         ----------
         command : str
             Name of command wrapped in message
-        payload : bytes
-            Message payload, will be attached after header
+        payload : dict
+            Message payload, will be attached to header after encoding
         magic : int
             Magic value used in this specific message
         checksum : bytes
@@ -50,22 +50,47 @@ class Message(MessageMeta):
         self.MAGIC = magic or self.MAGIC
         self.command = command.lower().encode('utf-8')
         self.payload = payload
+        enc_payload = self.encode_payload(payload) 
         self.checksum = checksum or \
-                        hashlib.sha256(hashlib.sha256(payload).digest()).digest()[0:4]
+                        hashlib.sha256(hashlib.sha256(enc_payload).digest()).digest()[0:4]
 
     def __bytes__(self) -> bytes:
+        payload = self.encode_payload(self.payload)
         return struct.pack(self.HEADER_FMT, self.MAGIC, self.command, 
-                           len(self.payload), self.checksum) + self.payload
+                           len(payload), self.checksum) + payload
 
     def __str__(self) -> str:
-        msg = dict()
-        msg.update(self.__dict__)
-        msg['payload'] = self.decode_payload(msg['payload'])
-        return 'Message {cmd}: {payload}'.format(cmd=self.command.decode('utf-8'), 
-                                                 payload=msg)
+        """
+        String description of message.
+
+        Returns
+        -------
+        str
+            String description of message
+        """
+        return 'Message({cmd}): {payload}'.format(cmd=self.command.decode('utf-8'), 
+                                                  payload=self.payload)
 
     def __repr__(self) -> str:
+        """
+        Same as Message.__str__
+        """
         return str(self)
+
+    def __len__(self) -> int:
+        """
+        Calculate length of message.
+
+        Only payload length is taken into the account. 
+        Header length is constant and equal 24, but can be calculated as 
+        struct.calcsize(Message.HEADER_FMT)
+
+        Returns
+        -------
+        int
+            Message (payload) length
+        """
+        return len(self.encode_payload())
 
     @classmethod
     def from_raw(cls, buf: bytes) -> MessageMeta:
@@ -154,7 +179,7 @@ class Message(MessageMeta):
     @classmethod
     def decode_payload(cls, payload: bytes) -> dict:
         """
-        Decode payload field of messages.
+        Decode payload field of message.
 
         Overwrite this method in every 'Message' subclass for proper decoding
 
@@ -170,6 +195,38 @@ class Message(MessageMeta):
         """
         return payload
 
+    def encode(self) -> dict:
+        """
+        Encode message to bytes
+
+        Returns
+        -------
+        bytes
+            encoded message
+        """
+        return bytes(self)
+
+    def encode_payload(self, payload: dict = None) -> bytes:
+        """
+        Encode payload field of message.
+
+        Overwrite this method in every 'Message' subclass for proper encoding
+
+        Parameters
+        ----------
+        payload : dict
+            Payload do encode to bytes
+
+        Returns
+        -------
+        bytes
+            encoded payload
+        """
+        payload = payload or self.payload
+        try:
+            return bytes(payload)
+        except TypeError:
+            return b''
 
 class Version(Message):
     """
@@ -225,17 +282,10 @@ class Version(Message):
         Version
             'Version' object
         """
-        user_agent = user_agent or self.USER_AGENT
-        ua_length = len(structs.str2varstr(user_agent))
-        version = version or self.VERSION
-        kwargs['payload'] = struct.pack(self.MESSAGE_FMT.format(ua_len=ua_length),
-                                        self.VERSION, services, timestamp, 
-                                        structs.socket2netaddr(*addr_recv,
-                                                               with_ts=False),
-                                        structs.socket2netaddr(*addr_from,
-                                                               with_ts=False),
-                                        nonce, structs.str2varstr(user_agent),
-                                        start_height, relay)
+        kwargs['payload'] = {'version': self.VERSION, 'services': services, 
+                             'timestamp': timestamp, 'addr_recv': addr_recv,
+                             'addr_from': addr_from, 'nonce': nonce, 'relay': relay,
+                             'user_agent': user_agent, 'start_height': start_height}
         super(Version, self).__init__('version', *args, **kwargs)
 
     @classmethod
@@ -253,12 +303,10 @@ class Version(Message):
         dict
             Decoded payload
         """
-        ua_length = len(payload) - struct.calcsize(
-                                       cls.MESSAGE_FMT.replace('{ua_len}s', ''))
+        ua_len = len(payload) - struct.calcsize(cls.MESSAGE_FMT.replace('{ua_len}s', ''))
         parsed = dict(zip(('version', 'services', 'timestamp', 'addr_recv', 'addr_from',
                            'nonce', 'user_agent', 'start_height', 'relay'),
-                          struct.unpack(
-                              cls.MESSAGE_FMT.format(ua_len=ua_length), payload)))
+                          struct.unpack(cls.MESSAGE_FMT.format(ua_len=ua_len), payload)))
         parsed['addr_recv'] = structs.netaddr2socket(parsed['addr_recv'])
         parsed['addr_from'] = structs.netaddr2socket(parsed['addr_from'])
         parsed['user_agent'] = structs.varstr2str(parsed['user_agent'])
@@ -287,6 +335,31 @@ class Version(Message):
         parsed['user_agent'] = parsed['user_agent'].decode('utf-8')
         return parsed
 
+    def encode_payload(self, payload: dict) -> bytes:
+        """
+        Encode payload field of message.
+
+        Parameters
+        ----------
+        payload : dict
+            Payload do encode to bytes
+
+        Returns
+        -------
+        bytes
+            encoded payload
+        """
+        p = payload
+        user_agent = p['user_agent'] or self.USER_AGENT
+        ua_length = len(structs.str2varstr(user_agent))
+        version = p['version'] or self.VERSION
+        return struct.pack(self.MESSAGE_FMT.format(ua_len=ua_length),
+                           self.VERSION, p['services'], p['timestamp'], 
+                           structs.socket2netaddr(*p['addr_recv'], with_ts=False),
+                           structs.socket2netaddr(*p['addr_from'], with_ts=False),
+                           p['nonce'], structs.str2varstr(user_agent),
+                           p['start_height'], p['relay'])
+
 class Verack(Message):
     """
     Verack message based on Bitcoin network-greeting 'verack' message
@@ -304,4 +377,4 @@ class Verack(Message):
         Verack
             'Verack' object        
         """
-        super(Verack, self).__init__('verack', b'', *args, **kwargs)
+        super(Verack, self).__init__('verack', None, *args, **kwargs)
