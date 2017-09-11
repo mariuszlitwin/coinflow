@@ -16,7 +16,7 @@ REQUIRES = []
 setup(
     name='coinflow',
     version=version,
-    description='',
+    description='Node for Bitcoin transaction geolocation network',
     long_description=readme,
     author='Mariusz Litwin',
     author_email='mariuszlitwin@hotmail.com',
@@ -30,17 +30,17 @@ setup(
     ],
 
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 2 - Pre-Alpha',
+        'Environment :: No Input/Output (Daemon)'
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'License :: OSI Approved :: Apache Software License',
         'Natural Language :: English',
-        'Operating System :: OS Independent',
-        'Programming Language :: Python :: 2.7',
+        'Operating System :: POSIX :: Linux',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: Implementation :: CPython',
-        'Programming Language :: Python :: Implementation :: PyPy',
+        'Topic :: Security',
+        'Topic :: Security :: Cryptography',
     ],
 
     install_requires=REQUIRES,

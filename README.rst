@@ -9,7 +9,8 @@ coinflow
 Installation
 ------------
 
-coinflow is under heavy development with support of Python 3.5+ and PyPy3 in mind.
+coinflow is under heavy development with support of Python 3.5+ running on Linux in mind.
+Expected outcome is docker image running coinflow node.
 
 To use it's code install it by issuing following commands:
 
