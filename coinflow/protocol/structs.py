@@ -3,6 +3,14 @@
 
 import struct
 import time
+import typing
+
+VarInt = typing.NewType('VarInt', Tuple[int, int])
+"""Type of decoded VarInt, pair of (actual_integer, length)"""
+VarStr = typing.NewType('NewStr', Tuple[str, int])
+"""Type of decoded VarStr, pair of (string, length)"""
+Socket = typing.NewType('Socket', Tuple[bytes, int])
+"""Type of socket address, pair of (inet_aton_addr, port)"""
 
 def int2varint(n: int) -> bytes:
     """
@@ -95,13 +103,15 @@ def socket2netaddr(ipaddr: str, port: int, services: int = 0,
     Parameters
     ----------
     ipaddr : bytes
-        IPv4 address to encode, must be encoded to binary format (socket.inet_aton)
+        IPv4 address to encode, must be encoded to binary format 
+        (socket.inet_aton)
     port : int
         tcp port to encode
     services : int
         bitfield indicating broadcasted services of node
     with_ts : bool
-        boolean flag indicating whether timestamp should be included in netaddr
+        boolean flag indicating whether timestamp should be included 
+        in netaddr
     timestamp : int
         timestamp to use instead one generated in function
 
