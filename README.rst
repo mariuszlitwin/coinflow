@@ -14,6 +14,7 @@ coinflow is under heavy development with support of Python 3.5+ and PyPy3 in min
 To use it's code install it by issuing following commands:
 
 .. code-block:: bash
+
     $ pip install -r requirements.txt
     $ python setup.py install
 
