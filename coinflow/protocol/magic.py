@@ -7,3 +7,4 @@ bitcoin = {
     'testnet3': 0x0709110b,
     'namecoin': 0xfeb4bef9,
 }
+"""Bitcoin network magic number"""

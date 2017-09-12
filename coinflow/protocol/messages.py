@@ -15,7 +15,7 @@ class MessageMeta(object):
 
 class Message(MessageMeta):
     """
-    Generic message in Blockchain. Specific messages should inherit from this class.
+    Generic message in Blockchain. All messages should inherit from this class.
 
     .. Message structure in Bitcoin wiki:
        https://en.bitcoin.it/wiki/Protocol_documentation#Message_structure
@@ -26,7 +26,7 @@ class Message(MessageMeta):
     MAGIC = 0x0
     """Magic value used in network"""
     HEADER_FMT = '<L12sL4s'
-    """Format string used in struct.pack and struct.unpack during message creation"""
+    """Format string used in pack and unpack during message creation"""
 
     def __init__(self, command: str, payload: dict, magic: int = None, 
                  checksum: bytes = None, *args, **kwargs) -> MessageMeta:
@@ -43,7 +43,8 @@ class Message(MessageMeta):
             Magic value used in this specific message
         checksum : bytes
             precalculated payload checksum to use instead of calculated one
-            should be used only in specific cases (e.g.: Message from bytes recreation)
+            should be used only in specific cases (e.g.: Message from bytes 
+            recreation)
 
         Returns
         -------
@@ -120,8 +121,8 @@ class Message(MessageMeta):
         """
         Change magic value globally
 
-        Magic value will affect all instances of this class and classes which inherited
-        from it.
+        Magic value will affect all instances of this class and classes which 
+        inherited from it.
 
         Parameters
         ----------
@@ -141,8 +142,8 @@ class Message(MessageMeta):
         """
         Change protocol version value globally
 
-        Version will affect all instances of this class and classes which inherited
-        from it.
+        Version will affect all instances of this class and classes which 
+        inherited from it.
 
         Parameters
         ----------
@@ -240,7 +241,7 @@ class Version(Message):
     """
 
     MESSAGE_FMT = '<LQq26s26sQ{ua_len}sL?'
-    """Format string used in struct.pack and struct.unpack during message creation"""
+    """Format string used in pack and unpack during message creation"""
     USER_AGENT = 'coinflow analyzer 0.0.1'
     """User agent of coinflow node"""
 
@@ -257,28 +258,32 @@ class Version(Message):
         Parameters
         ----------
         addr_recv : tuple
-            tuple of (ipaddr, port) of remote node. IP has to be IPv4 processed by 
-            socket.inet_aton()
+            tuple of (ipaddr, port) of remote node. IP has to be IPv4 processed
+            by socket.inet_aton()
         addr_from : tuple
-            tuple of (ipaddr, port) of local node. IP has to be IPv4 processed by 
-            socket.inet_aton()
+            tuple of (ipaddr, port) of local node. IP has to be IPv4 processed
+            by socket.inet_aton()
         version: int
             version mumber to be used instead of default one
-            should be used only in specific cases (e.g.: Message from bytes recreation)
+            should be used only in specific cases (e.g.: Message from bytes
+            recreation)
         services : int
             bitfield describing supported services
         timestamp : datetime
             timestamp to be used with this message instead of calculated one
-            should be used only in specific cases (e.g.: Message from bytes recreation)
+            should be used only in specific cases (e.g.: Message from bytes
+            recreation)
         nonce : int
             random nonce to be used with this message instead of calculated one
-            should be used only in specific cases (e.g.: Message from bytes recreation)
+            should be used only in specific cases (e.g.: Message from bytes
+            recreation)
         user_agent : str
             user agent to use instead of default one
         start_height : int
             number of last block received by emitting node
         relay : bool
-            boolean flag indicating whether remote peer should annouce relayed txs
+            boolean flag indicating whether remote peer should annouce 
+            relayed txs
 
         Returns
         -------
@@ -364,7 +369,8 @@ class Version(Message):
         ua_length = len(structs.str2varstr(user_agent))
         version = p['version'] or self.VERSION
         return struct.pack(self.MESSAGE_FMT.format(ua_len=ua_length),
-                           self.VERSION, p['services'], structs.dt2ts(p['timestamp']), 
+                           self.VERSION, p['services'],
+                           structs.dt2ts(p['timestamp']),
                            structs.socket2netaddr(*p['addr_recv'], with_ts=False),
                            structs.socket2netaddr(*p['addr_from'], with_ts=False),
                            p['nonce'], structs.str2varstr(user_agent),
@@ -398,7 +404,7 @@ class Addr(Message):
     """
     
     MESSAGE_FMT = '<LQq26s26sQ{ua_len}sL?'
-    """Format string used in struct.pack and struct.unpack during message creation"""
+    """Format string used in pack and unpack during message creation"""
 
     def __init__(self, addr_list: Sequence[Tuple[int, structs.Socket]], 
                  *args, **kwargs) -> MessageMeta:
