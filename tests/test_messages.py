@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import pytest
-import time
+from datetime import datetime, timezone
 import socket
 import hashlib
 
@@ -22,14 +22,14 @@ def test_message():
                   'payload': payload,
                   'command': 'test'}
 
-    assert msg.decode(bytes(msg)) == to_compare
+    assert msg.decode(msg.encode()) == to_compare
 
 def test_version():
     version = 70001
     services = 0
-    timestamp = int(time.time())
-    addr_recv = (socket.inet_aton('8.8.8.8'), 8333)
-    addr_from = (socket.inet_aton('127.0.0.1'), 8333)
+    timestamp = datetime.now(timezone.utc).replace(microsecond=0)
+    addr_recv = ('8.8.8.8', 8333)
+    addr_from = ('127.0.0.1', 8333)
     nonce = 0xdeadbeaf
     user_agent = 'coinflow test'
     start_height = 1337
@@ -56,7 +56,7 @@ def test_version():
                       'relay': relay
                   }}
 
-    assert msg.decode(bytes(msg)) == to_compare
+    assert msg.decode(msg.encode()) == to_compare
 
 def test_verack():
     magic = 0xdeadbeaf
@@ -70,4 +70,4 @@ def test_verack():
                   'payload': b'',
                   'length': 0}
 
-    assert msg.decode(bytes(msg)) == to_compare
+    assert msg.decode(msg.encode()) == to_compare

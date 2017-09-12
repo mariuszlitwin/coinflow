@@ -5,11 +5,14 @@ import struct
 import time
 import typing
 
-VarInt = typing.NewType('VarInt', Tuple[int, int])
+import socket
+from datetime import datetime, timezone
+
+VarInt = typing.NewType('VarInt', typing.Tuple[int, int])
 """Type of decoded VarInt, pair of (actual_integer, length)"""
-VarStr = typing.NewType('NewStr', Tuple[str, int])
+VarStr = typing.NewType('NewStr', typing.Tuple[str, int])
 """Type of decoded VarStr, pair of (string, length)"""
-Socket = typing.NewType('Socket', Tuple[bytes, int])
+Socket = typing.NewType('Socket', typing.Tuple[bytes, int])
 """Type of socket address, pair of (inet_aton_addr, port)"""
 
 def int2varint(n: int) -> bytes:
@@ -94,7 +97,7 @@ def varstr2str(s: bytes) -> tuple:
     return (s[length:length+n], length+n)
 
 def socket2netaddr(ipaddr: str, port: int, services: int = 0,
-                   with_ts: bool = True, timestamp: int = None) -> bytes:
+                   with_ts: bool = True, timestamp: datetime = None) -> bytes:
     """
     Encode socket address (ip, port) to Bitcoin's netaddr structure
 
@@ -103,8 +106,7 @@ def socket2netaddr(ipaddr: str, port: int, services: int = 0,
     Parameters
     ----------
     ipaddr : bytes
-        IPv4 address to encode, must be encoded to binary format 
-        (socket.inet_aton)
+        IPv4 address to encode, must be in human readable-format
     port : int
         tcp port to encode
     services : int
@@ -112,7 +114,7 @@ def socket2netaddr(ipaddr: str, port: int, services: int = 0,
     with_ts : bool
         boolean flag indicating whether timestamp should be included 
         in netaddr
-    timestamp : int
+    timestamp : datetime.datetime
         timestamp to use instead one generated in function
 
     Returns
@@ -120,11 +122,11 @@ def socket2netaddr(ipaddr: str, port: int, services: int = 0,
     bytes
         Encoded socket address
     """
-    timestamp = timestamp or int(time.time())
+    timestamp = dt2ts(timestamp or datetime.now(timezone.utc))
     payload = struct.pack('<L', timestamp) if with_ts else b''
     payload += struct.pack('<Q', services)
     payload += b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff'
-    payload += struct.pack('>4sH', ipaddr, port)
+    payload += struct.pack('>4sH', socket.inet_aton(ipaddr), port)
     return payload
 
 def netaddr2socket(n: bytes) -> dict:
@@ -146,10 +148,51 @@ def netaddr2socket(n: bytes) -> dict:
     assert len(n) == 26 or len(n) == 30
     payload = dict()
     if len(n) != 26:
-        payload['timestamp'] = struct.unpack('<L', n[:4])[0]
+        payload['timestamp'] = ts2dt(struct.unpack('<L', n[:4])[0])
         n = n[4:]
     else:
         payload['timestamp'] = None
     payload['services'] = struct.unpack('<Q', n[:8])[0]
     payload['ipaddr'], payload['port'] = struct.unpack('>4sH', n[-6:])
+    payload['ipaddr'] = socket.inet_ntoa(payload['ipaddr'])
     return payload
+
+def dt2ts(d: datetime) -> int:
+    """
+    Encode Python datetime.datetime object to Unix timestamp.
+    To ensure consistency only timezone aware datetimes are converted
+
+    Parameters
+    ----------
+    d : datetime
+        datetime to encode
+
+    Returns
+    -------
+    int
+        Unix timestamp coresponding to datetime
+
+    Raises
+    ------
+    TypeError
+        When datetime without timezone is passed
+    """
+    if d.tzinfo is None or d.tzinfo.utcoffset(d) is None:
+        raise TypeError('{} is not timezone-aware'.format(d))
+    return int(d.timestamp())
+
+def ts2dt(t: int) -> datetime:
+    """
+    Decode Unix timestamp to Python datetime.datetime UTC-standarized
+
+    Parameters
+    ----------
+    t : int
+        timestamp to decode
+
+    Returns
+    -------
+    datetime.datetime
+        UTC datetime coresponding to timestamp
+    """
+    return datetime.fromtimestamp(t, timezone.utc)

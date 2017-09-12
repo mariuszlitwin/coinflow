@@ -3,8 +3,11 @@
 
 import struct
 import hashlib
-import time
 import random
+from datetime import datetime, timezone
+
+from typing import Sequence, Tuple
+
 import coinflow.protocol.structs as structs
 
 class MessageMeta(object):
@@ -243,7 +246,7 @@ class Version(Message):
 
     def __init__(self, addr_recv: tuple, addr_from: tuple,
                  version: int = None, services: int = 0, 
-                 timestamp: int = int(time.time()),
+                 timestamp: datetime = datetime.now(timezone.utc),
                  nonce: int = random.getrandbits(64), user_agent: str = None, 
                  start_height: int = 0, relay: bool = True, 
                  *args, **kwargs) -> MessageMeta:
@@ -264,7 +267,7 @@ class Version(Message):
             should be used only in specific cases (e.g.: Message from bytes recreation)
         services : int
             bitfield describing supported services
-        timestamp : int
+        timestamp : datetime
             timestamp to be used with this message instead of calculated one
             should be used only in specific cases (e.g.: Message from bytes recreation)
         nonce : int
@@ -284,8 +287,9 @@ class Version(Message):
         """
         kwargs['payload'] = {'version': self.VERSION, 'services': services, 
                              'timestamp': timestamp, 'addr_recv': addr_recv,
-                             'addr_from': addr_from, 'nonce': nonce, 'relay': relay,
-                             'user_agent': user_agent, 'start_height': start_height}
+                             'addr_from': addr_from, 'nonce': nonce, 
+                             'relay': relay, 'user_agent': user_agent, 
+                             'start_height': start_height}
         super(Version, self).__init__('version', *args, **kwargs)
 
     @classmethod
@@ -303,10 +307,14 @@ class Version(Message):
         dict
             Decoded payload
         """
-        ua_len = len(payload) - struct.calcsize(cls.MESSAGE_FMT.replace('{ua_len}s', ''))
-        parsed = dict(zip(('version', 'services', 'timestamp', 'addr_recv', 'addr_from',
-                           'nonce', 'user_agent', 'start_height', 'relay'),
-                          struct.unpack(cls.MESSAGE_FMT.format(ua_len=ua_len), payload)))
+        ua_len = len(payload) - struct.calcsize(
+                                    cls.MESSAGE_FMT.replace('{ua_len}s', ''))
+        fmt = cls.MESSAGE_FMT.format(ua_len=ua_len)
+        parsed = dict(zip(('version', 'services', 'timestamp', 'addr_recv', 
+                           'addr_from', 'nonce', 'user_agent', 'start_height', 
+                           'relay'),
+                          struct.unpack(fmt, payload)))
+        parsed['timestamp'] = structs.ts2dt(parsed['timestamp'])
         parsed['addr_recv'] = structs.netaddr2socket(parsed['addr_recv'])
         parsed['addr_from'] = structs.netaddr2socket(parsed['addr_from'])
         parsed['user_agent'] = structs.varstr2str(parsed['user_agent'])
@@ -329,8 +337,10 @@ class Version(Message):
         """
         parsed = cls.decode_payload_raw(payload)
 
-        parsed['addr_recv'] = (parsed['addr_recv']['ipaddr'], parsed['addr_recv']['port'])
-        parsed['addr_from'] = (parsed['addr_from']['ipaddr'], parsed['addr_from']['port'])
+        parsed['addr_recv'] = (parsed['addr_recv']['ipaddr'], 
+                               parsed['addr_recv']['port'])
+        parsed['addr_from'] = (parsed['addr_from']['ipaddr'], 
+                               parsed['addr_from']['port'])
         parsed['user_agent'], _ = parsed['user_agent']
         parsed['user_agent'] = parsed['user_agent'].decode('utf-8')
         return parsed
@@ -354,7 +364,7 @@ class Version(Message):
         ua_length = len(structs.str2varstr(user_agent))
         version = p['version'] or self.VERSION
         return struct.pack(self.MESSAGE_FMT.format(ua_len=ua_length),
-                           self.VERSION, p['services'], p['timestamp'], 
+                           self.VERSION, p['services'], structs.dt2ts(p['timestamp']), 
                            structs.socket2netaddr(*p['addr_recv'], with_ts=False),
                            structs.socket2netaddr(*p['addr_from'], with_ts=False),
                            p['nonce'], structs.str2varstr(user_agent),
@@ -370,7 +380,7 @@ class Verack(Message):
 
     def __init__(self, *args, **kwargs) -> MessageMeta:
         """
-        Constructor for 'Version' class.
+        Constructor for 'Verack' class.
 
         Returns
         -------
@@ -378,3 +388,27 @@ class Verack(Message):
             'Verack' object        
         """
         super(Verack, self).__init__('verack', None, *args, **kwargs)
+
+class Addr(Message):
+    """
+    Addr message based on Bitcoin network-discovery 'addr' message
+
+    .. Message structure in Bitcoin wiki:
+       https://en.bitcoin.it/wiki/Protocol_documentation#addr
+    """
+    
+    MESSAGE_FMT = '<LQq26s26sQ{ua_len}sL?'
+    """Format string used in struct.pack and struct.unpack during message creation"""
+
+    def __init__(self, addr_list: Sequence[Tuple[int, structs.Socket]], 
+                 *args, **kwargs) -> MessageMeta:
+        """
+        Constructor for 'Addr' class.
+
+        Returns
+        -------
+        Addr
+            'Addr' object
+        """
+        super(Addr, self).__init__('addr', addr_list, *args, **kwargs)
+        

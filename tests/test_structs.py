@@ -1,6 +1,7 @@
 import pytest
 import time
-import socket
+from datetime import datetime, timezone
+
 from coinflow.protocol.structs import *
 
 def test_varint():
@@ -31,11 +32,12 @@ def test_varstr():
     ratherlong_enc = str2varstr(ratherlong)
 
     assert varstr2str(short_enc) == (short.encode('utf-8'), len(short_enc))
-    assert varstr2str(ratherlong_enc) == (ratherlong.encode('utf-8'), len(ratherlong_enc))
+    assert varstr2str(ratherlong_enc) == (ratherlong.encode('utf-8'), 
+                                          len(ratherlong_enc))
 
 def test_netaddr():
-    (ipaddr, port) = (socket.inet_aton('127.0.0.1'), 8333)
-    timestamp = int(time.time())
+    (ipaddr, port) = ('127.0.0.1', 8333)
+    timestamp = datetime.now(timezone.utc).replace(microsecond=0)
 
     basic = socket2netaddr(ipaddr, port, timestamp=timestamp)
     no_timestamp = socket2netaddr(ipaddr, port, services=1, with_ts=False)
@@ -49,4 +51,14 @@ def test_netaddr():
                                             'ipaddr': ipaddr,
                                             'port': port}
     
+
+def test_timestamp():
+    notz = datetime.now()
+    withtz = datetime.now(timezone.utc)
+
+    with pytest.raises(TypeError):
+        dt2ts(notz)
     
+    enc_withtz = dt2ts(withtz)
+
+    assert ts2dt(enc_withtz) == withtz.replace(microsecond=0)
