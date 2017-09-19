@@ -1,6 +1,2 @@
-import os, sys
-import bitcoin
-import btcpy
-
-bitcoin.SelectParams('mainnet')
-
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-

@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import socket
 import hashlib
 
-from coinflow.protocol.messages import *
+from coinflow.protocol.messages import Message, Version, Verack, Addr
 
 def test_message():
     magic = 0xdeadbeaf
@@ -37,8 +37,9 @@ def test_version():
     magic = 0xdeadbeaf
     checksum = b'\xca\x97\x81\x12'
 
-    msg = Version(addr_recv, addr_from, version, services, timestamp, nonce, user_agent,
-                  start_height, relay, magic=magic, checksum=checksum)
+    msg = Version(addr_recv, addr_from, version, services, timestamp, nonce, 
+                  user_agent, start_height, relay, magic=magic, 
+                  checksum=checksum)
     
     to_compare = {'checksum': checksum,
                   'magic': magic,
@@ -71,3 +72,6 @@ def test_verack():
                   'length': 0}
 
     assert msg.decode(msg.encode()) == to_compare
+
+def test_addr():
+    pass

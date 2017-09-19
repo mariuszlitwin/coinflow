@@ -15,6 +15,7 @@ VarStr = typing.NewType('NewStr', typing.Tuple[str, int])
 Socket = typing.NewType('Socket', typing.Tuple[bytes, int])
 """Type of socket address, pair of (inet_aton_addr, port)"""
 
+
 def int2varint(n: int) -> bytes:
     """
     Encode integer to Bitcoin's varint structure
@@ -37,6 +38,7 @@ def int2varint(n: int) -> bytes:
         return struct.pack('<cL', b'\xfe', n)
     else:
         return struct.pack('<cQ', b'\xff', n)
+
 
 def varint2int(n: bytes) -> tuple:
     """
@@ -62,6 +64,7 @@ def varint2int(n: bytes) -> tuple:
     else:
         return (struct.unpack('<Q', n[1:9])[0], 7)
 
+
 def str2varstr(s: str) -> bytes:
     """
     Encode string to Bitcoin's varstr structure
@@ -78,6 +81,7 @@ def str2varstr(s: str) -> bytes:
     """
     s = s if type(s) == bytes else s.encode('utf-8')
     return int2varint(len(s)) + s
+
 
 def varstr2str(s: bytes) -> tuple:
     """
@@ -96,6 +100,7 @@ def varstr2str(s: bytes) -> tuple:
     (n, length) = varint2int(s)
     return (s[length:length+n], length+n)
 
+
 def socket2netaddr(ipaddr: str, port: int, services: int = 0,
                    with_ts: bool = True, timestamp: datetime = None) -> bytes:
     """
@@ -112,7 +117,7 @@ def socket2netaddr(ipaddr: str, port: int, services: int = 0,
     services : int
         bitfield indicating broadcasted services of node
     with_ts : bool
-        boolean flag indicating whether timestamp should be included 
+        boolean flag indicating whether timestamp should be included
         in netaddr
     timestamp : datetime.datetime
         timestamp to use instead one generated in function
@@ -128,6 +133,7 @@ def socket2netaddr(ipaddr: str, port: int, services: int = 0,
     payload += b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff'
     payload += struct.pack('>4sH', socket.inet_aton(ipaddr), port)
     return payload
+
 
 def netaddr2socket(n: bytes) -> dict:
     """
@@ -157,6 +163,7 @@ def netaddr2socket(n: bytes) -> dict:
     payload['ipaddr'] = socket.inet_ntoa(payload['ipaddr'])
     return payload
 
+
 def dt2ts(d: datetime) -> int:
     """
     Encode Python datetime.datetime object to Unix timestamp.
@@ -180,6 +187,7 @@ def dt2ts(d: datetime) -> int:
     if d.tzinfo is None or d.tzinfo.utcoffset(d) is None:
         raise TypeError('{} is not timezone-aware'.format(d))
     return int(d.timestamp())
+
 
 def ts2dt(t: int) -> datetime:
     """
