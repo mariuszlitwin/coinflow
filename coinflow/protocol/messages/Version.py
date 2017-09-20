@@ -6,7 +6,7 @@ import random
 from datetime import datetime, timezone
 from typing import Dict, Any, NewType
 
-from .Message import Message
+from .Message import Message, MsgGenericPayload
 import coinflow.protocol.structs as structs
 
 
@@ -18,9 +18,9 @@ class Version(Message):
        https://en.bitcoin.it/wiki/Protocol_documentation#version
     """
 
-    MESSAGE_FMT = '<LQq26s26sQ{ua_len}sL?'
+    MESSAGE_FMT = '<LQq26s26sQ{ua_len}sL?'  # type: str
     """Format string used in pack and unpack during message creation"""
-    USER_AGENT = 'coinflow analyzer 0.0.1'
+    USER_AGENT = 'coinflow analyzer 0.0.1'  # type: str
     """User agent of coinflow node"""
 
     def __init__(self, addr_recv: tuple, addr_from: tuple,
@@ -75,7 +75,7 @@ class Version(Message):
         super(Version, self).__init__('version', *args, **kwargs)
 
     @classmethod
-    def decode_payload_raw(cls, payload: bytes) -> dict:
+    def decode_payload_raw(cls, payload: bytes) -> MsgGenericPayload:
         """
         Decode message content from 'payload' field keeping all metadata
 
@@ -96,7 +96,7 @@ class Version(Message):
         parsed = dict(zip(('version', 'services', 'timestamp', 'addr_recv',
                            'addr_from', 'nonce', 'user_agent', 'start_height',
                            'relay'),
-                      struct.unpack(fmt, payload)))  # type: Dict[str, Any]
+                      struct.unpack(fmt, payload)))  # type: MsgGenericPayload
         parsed['timestamp'] = structs.ts2dt(parsed['timestamp'])
         parsed['addr_recv'] = structs.netaddr2socket(parsed['addr_recv'])
         parsed['addr_from'] = structs.netaddr2socket(parsed['addr_from'])
@@ -104,7 +104,7 @@ class Version(Message):
         return parsed
 
     @classmethod
-    def decode_payload(cls, payload: bytes) -> dict:
+    def decode_payload(cls, payload: bytes) -> MsgGenericPayload:
         """
         Decode message content from 'payload' field
 
@@ -118,7 +118,7 @@ class Version(Message):
         dict
             Decoded payload
         """
-        parsed = cls.decode_payload_raw(payload)
+        parsed = cls.decode_payload_raw(payload)  # type: MsgGenericPayload
 
         parsed['addr_recv'] = (parsed['addr_recv']['ipaddr'],
                                parsed['addr_recv']['port'])
@@ -128,7 +128,7 @@ class Version(Message):
         parsed['user_agent'] = parsed['user_agent']
         return parsed
 
-    def encode_payload(self, payload: dict = None) -> bytes:
+    def encode_payload(self, payload: MsgGenericPayload = None) -> bytes:
         """
         Encode payload field of message.
 
@@ -142,10 +142,10 @@ class Version(Message):
         bytes
             encoded payload
         """
-        p = payload or self.payload
-        user_agent = str(p['user_agent'] or self.USER_AGENT)
-        ua_length = len(structs.str2varstr(user_agent))
-        version = p['version'] or self.VERSION
+        p = payload or self.payload  # type: MsgGenericPayload
+        user_agent = str(p['user_agent'] or self.USER_AGENT)  # type: str
+        ua_length = len(structs.str2varstr(user_agent))  # type: int
+        version = int(p['version'] or self.VERSION)  # type: int
         return struct.pack(self.MESSAGE_FMT.format(ua_len=ua_length),
                            self.VERSION, p['services'],
                            structs.dt2ts(p['timestamp']),

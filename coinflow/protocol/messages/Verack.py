@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from .Message import Message, MessageMeta
+from .Message import Message
 
 
 class Verack(Message):
