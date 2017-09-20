@@ -3,16 +3,17 @@
 
 import struct
 import time
-import typing
 
 import socket
 from datetime import datetime, timezone
 
-VarInt = typing.NewType('VarInt', typing.Tuple[int, int])
+from typing import Tuple, Dict, Union, NewType
+
+VarInt = NewType('VarInt', Tuple[int, int])
 """Type of decoded VarInt, pair of (actual_integer, length)"""
-VarStr = typing.NewType('NewStr', typing.Tuple[str, int])
+VarStr = NewType('VarStr', Tuple[str, int])
 """Type of decoded VarStr, pair of (string, length)"""
-Socket = typing.NewType('Socket', typing.Tuple[bytes, int])
+Socket = NewType('Socket', Tuple[str, int])
 """Type of socket address, pair of (inet_aton_addr, port)"""
 
 
@@ -40,7 +41,7 @@ def int2varint(n: int) -> bytes:
         return struct.pack('<cQ', b'\xff', n)
 
 
-def varint2int(n: bytes) -> tuple:
+def varint2int(n: bytes) -> Tuple[int, int]:
     """
     Decode integer from Bitcoin's varint structure
 
@@ -54,7 +55,7 @@ def varint2int(n: bytes) -> tuple:
     tuple(int, int)
         Decoded integer and it's length
     """
-    n0 = n[0]
+    n0 = n[0] # type: int
     if n0 < 0xfd:
         return (n0, 1)
     elif n0 == 0xfd:
@@ -79,11 +80,10 @@ def str2varstr(s: str) -> bytes:
     bytes
         Encoded string
     """
-    s = s if type(s) == bytes else s.encode('utf-8')
-    return int2varint(len(s)) + s
+    return int2varint(len(s)) + s.encode('utf-8')
 
 
-def varstr2str(s: bytes) -> tuple:
+def varstr2str(s: bytes) -> Tuple[str, int]:
     """
     Decode string from Bitcoin's varstr structure
 
@@ -97,8 +97,8 @@ def varstr2str(s: bytes) -> tuple:
     tuple(str, int)
         Decoded string and it's length
     """
-    (n, length) = varint2int(s)
-    return (s[length:length+n], length+n)
+    (n, length) = varint2int(s) # type: Tuple[int, int]
+    return (s[length:length+n].decode('utf-8'), length+n)
 
 
 def socket2netaddr(ipaddr: str, port: int, services: int = 0,
@@ -127,15 +127,16 @@ def socket2netaddr(ipaddr: str, port: int, services: int = 0,
     bytes
         Encoded socket address
     """
-    timestamp = dt2ts(timestamp or datetime.now(timezone.utc))
-    payload = struct.pack('<L', timestamp) if with_ts else b''
-    payload += struct.pack('<Q', services)
-    payload += b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff'
-    payload += struct.pack('>4sH', socket.inet_aton(ipaddr), port)
-    return payload
+    ts = dt2ts(timestamp or datetime.now(timezone.utc)) # type: int
+    payload = bytearray() # type: bytearray
+    payload.extend(struct.pack('<L', ts) if with_ts else b'')
+    payload.extend(struct.pack('<Q', services))
+    payload.extend(b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff')
+    payload.extend(struct.pack('>4sH', socket.inet_aton(ipaddr), port))
+    return bytes(payload)
 
 
-def netaddr2socket(n: bytes) -> dict:
+def netaddr2socket(n: bytes) -> Dict[str, Union[datetime, int, str]]:
     """
     Decode socket address (ip, port) from Bitcoin's netaddr structure
 
@@ -152,16 +153,16 @@ def netaddr2socket(n: bytes) -> dict:
         dict with all parsed fields (timestamp, services, ipaddr, port)
     """
     assert len(n) == 26 or len(n) == 30
-    payload = dict()
+    p = dict() # type: Dict[str, Union[datetime, int, str]]
     if len(n) != 26:
-        payload['timestamp'] = ts2dt(struct.unpack('<L', n[:4])[0])
+        p['timestamp'] = ts2dt(struct.unpack('<L', n[:4])[0])
         n = n[4:]
     else:
-        payload['timestamp'] = None
-    payload['services'] = struct.unpack('<Q', n[:8])[0]
-    payload['ipaddr'], payload['port'] = struct.unpack('>4sH', n[-6:])
-    payload['ipaddr'] = socket.inet_ntoa(payload['ipaddr'])
-    return payload
+        p['timestamp'] = None
+    p['services'] = struct.unpack('<Q', n[:8])[0]
+    (addr, p['port']) = struct.unpack('>4sH', n[-6:])
+    p['ipaddr'] = socket.inet_ntoa(addr)
+    return p
 
 
 def dt2ts(d: datetime) -> int:

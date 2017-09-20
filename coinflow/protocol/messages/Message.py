@@ -25,7 +25,7 @@ class Message(MessageMeta):
     """Format string used in pack and unpack during message creation"""
 
     def __init__(self, command: str, payload: dict, magic: int = None,
-                 checksum: bytes = None, *args, **kwargs) -> MessageMeta:
+                 checksum: bytes = None, *args, **kwargs) -> None:
         """
         Constructor for 'Message' class.
 
@@ -194,9 +194,9 @@ class Message(MessageMeta):
         dict
             Decoded payload
         """
-        return payload
+        return dict()
 
-    def encode(self) -> dict:
+    def encode(self) -> bytes:
         """
         Encode message to bytes
 

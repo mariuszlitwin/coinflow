@@ -6,4 +6,4 @@ from .Version import Version
 from .Verack import Verack
 from .Addr import Addr
 
-__all__ = [MessageMeta, Message, Version, Verack, Addr]
+__all__ = ['MessageMeta', 'Message', 'Version', 'Verack', 'Addr']

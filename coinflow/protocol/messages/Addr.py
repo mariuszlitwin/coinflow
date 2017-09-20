@@ -5,11 +5,14 @@ import struct
 import hashlib
 import random
 
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, List, Dict, NewType, Union
+from datetime import datetime
 
 from .Message import Message, MessageMeta
 import coinflow.protocol.structs as structs
 
+AddrEntry = NewType('AddrEntry', Dict[str, Union[datetime, structs.Socket]])
+AddrList = NewType('AddrList', List[AddrEntry])
 
 class Addr(Message):
     """
@@ -18,10 +21,10 @@ class Addr(Message):
     .. Message structure in Bitcoin wiki:
        https://en.bitcoin.it/wiki/Protocol_documentation#addr
     """
-    ADDR_FMT = '<L26s'
+    ADDR_FMT = '<L26s' # type: str
 
     def __init__(self, addr_list: Sequence[Tuple[int, structs.Socket]],
-                 *args, **kwargs) -> MessageMeta:
+                 *args, **kwargs) -> None:
         """
         Constructor for 'Addr' class.
 
@@ -34,7 +37,7 @@ class Addr(Message):
                                    *args, **kwargs)
 
     @classmethod
-    def decode_payload(cls, payload: bytes) -> dict:
+    def decode_payload(cls, payload: bytes) -> Dict[str, AddrList]:
         """
         Decode message content from 'payload' field
 
@@ -48,20 +51,20 @@ class Addr(Message):
         dict
             Decoded payload
         """
-        (addr_list_len, prefix) = varint2int(payload)
-        addr_list = list()
+        (addr_len, prefix) = structs.varint2int(payload) # type: Tuple[int, int]
+        addr_list = list() # AddrList
         for addr in (payload[i:i+30] for i in range(prefix,
-                                                    addr_list_len*30,
+                                                    addr_len*30,
                                                     30)):
-            (timestamp, netaddr) = struct.unpack(self.ADDR_FMT, addr)
-            netaddr = netaddr2socket(netaddr)
+            (ts, rawaddr) = struct.unpack(cls.ADDR_FMT, addr) # type: Tuple[int, bytes]
+            netaddr = structs.netaddr2socket(rawaddr)
             del netaddr['timestamp']
-            addr_list.append({'timestamp': structs.ts2dt(timestamp),
+            addr_list.append({'timestamp': structs.ts2dt(ts),
                               'addr': netaddr})
 
         return {'addr_list': addr_list}
 
-    def encode_payload(self, payload: dict) -> bytes:
+    def encode_payload(self, payload: Dict[str, AddrList] = None) -> bytes:
         """
         Encode payload field of message.
 
@@ -75,10 +78,11 @@ class Addr(Message):
         bytes
             encoded payload
         """
-        addr_list = bytearray()
-        addr_list.append(structs.int2varint(len(payload['addr_list'])))
-        for addr in payload['addr_list']:
+        p = payload or self.payload # type: Dict[str, AddrList]
+        addr_list = bytearray() # type: bytearray
+        addr_list.extend(structs.int2varint(len(p['addr_list'])))
+        for a in p['addr_list']:
             addr_list.extend(struct.pack(self.ADDR_FMT,
-                                         structs.dt2ts(addr['timestamp']),
-                                         structs.socket2netaddr(addr['addr'])))
+                                         structs.dt2ts(a['timestamp']),
+                                         structs.socket2netaddr(*a['addr'])))
         return bytes(addr_list)

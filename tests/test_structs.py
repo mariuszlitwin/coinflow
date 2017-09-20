@@ -31,8 +31,8 @@ def test_varstr():
     short_enc = str2varstr(short)
     ratherlong_enc = str2varstr(ratherlong)
 
-    assert varstr2str(short_enc) == (short.encode('utf-8'), len(short_enc))
-    assert varstr2str(ratherlong_enc) == (ratherlong.encode('utf-8'), 
+    assert varstr2str(short_enc) == (short, len(short_enc))
+    assert varstr2str(ratherlong_enc) == (ratherlong, 
                                           len(ratherlong_enc))
 
 def test_netaddr():

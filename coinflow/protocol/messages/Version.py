@@ -5,7 +5,7 @@ import struct
 import random
 from datetime import datetime, timezone
 
-from .Message import Message, MessageMeta
+from .Message import Message
 import coinflow.protocol.structs as structs
 
 
@@ -27,7 +27,7 @@ class Version(Message):
                  timestamp: datetime = datetime.now(timezone.utc),
                  nonce: int = random.getrandbits(64), user_agent: str = None,
                  start_height: int = 0, relay: bool = True,
-                 *args, **kwargs) -> MessageMeta:
+                 *args, **kwargs) -> None:
         """
         Constructor for 'Version' class.
 
@@ -126,7 +126,7 @@ class Version(Message):
         parsed['user_agent'] = parsed['user_agent'].decode('utf-8')
         return parsed
 
-    def encode_payload(self, payload: dict) -> bytes:
+    def encode_payload(self, payload: dict = None) -> bytes:
         """
         Encode payload field of message.
 
@@ -140,8 +140,8 @@ class Version(Message):
         bytes
             encoded payload
         """
-        p = payload
-        user_agent = p['user_agent'] or self.USER_AGENT
+        p = payload or self.payload
+        user_agent = bytes(p['user_agent'] or self.USER_AGENT)
         ua_length = len(structs.str2varstr(user_agent))
         version = p['version'] or self.VERSION
         return struct.pack(self.MESSAGE_FMT.format(ua_len=ua_length),

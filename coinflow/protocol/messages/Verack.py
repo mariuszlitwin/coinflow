@@ -12,7 +12,7 @@ class Verack(Message):
        https://en.bitcoin.it/wiki/Protocol_documentation#verack
     """
 
-    def __init__(self, *args, **kwargs) -> MessageMeta:
+    def __init__(self, *args, **kwargs) -> None:
         """
         Constructor for 'Verack' class.
 
