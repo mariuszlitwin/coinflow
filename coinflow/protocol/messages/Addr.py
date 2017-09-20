@@ -14,6 +14,7 @@ import coinflow.protocol.structs as structs
 AddrEntry = NewType('AddrEntry', Dict[str, Union[datetime, structs.Socket]])
 AddrList = NewType('AddrList', List[AddrEntry])
 
+
 class Addr(Message):
     """
     Addr message based on Bitcoin network-discovery 'addr' message
@@ -21,7 +22,7 @@ class Addr(Message):
     .. Message structure in Bitcoin wiki:
        https://en.bitcoin.it/wiki/Protocol_documentation#addr
     """
-    ADDR_FMT = '<L26s' # type: str
+    ADDR_FMT = '<L26s'  # type: str
 
     def __init__(self, addr_list: Sequence[Tuple[int, structs.Socket]],
                  *args, **kwargs) -> None:
@@ -51,13 +52,14 @@ class Addr(Message):
         dict
             Decoded payload
         """
-        (addr_len, prefix) = structs.varint2int(payload) # type: Tuple[int, int]
-        addr_list = list() # AddrList
+        (a_len, prefix) = structs.varint2int(payload)  # type: Tuple[int, int]
+        addr_list = list()  # type: AddrList
         for addr in (payload[i:i+30] for i in range(prefix,
-                                                    addr_len*30,
+                                                    a_len*30,
                                                     30)):
-            (ts, rawaddr) = struct.unpack(cls.ADDR_FMT, addr) # type: Tuple[int, bytes]
-            netaddr = structs.netaddr2socket(rawaddr)
+            (ts, a) = struct.unpack(cls.ADDR_FMT,
+                                    addr)  # type: Tuple[int, bytes]
+            netaddr = structs.netaddr2socket(a)
             del netaddr['timestamp']
             addr_list.append({'timestamp': structs.ts2dt(ts),
                               'addr': netaddr})
@@ -78,8 +80,8 @@ class Addr(Message):
         bytes
             encoded payload
         """
-        p = payload or self.payload # type: Dict[str, AddrList]
-        addr_list = bytearray() # type: bytearray
+        p = payload or self.payload  # type: Dict[str, AddrList]
+        addr_list = bytearray()  # type: bytearray
         addr_list.extend(structs.int2varint(len(p['addr_list'])))
         for a in p['addr_list']:
             addr_list.extend(struct.pack(self.ADDR_FMT,

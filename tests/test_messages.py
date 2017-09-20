@@ -10,9 +10,9 @@ from coinflow.protocol.messages import Message, Version, Verack, Addr
 
 def test_message():
     magic = 0xdeadbeaf
-    payload = b'sometests'
+    payload = {}
     magic = 0xdeadbeaf
-    checksum = hashlib.sha256(hashlib.sha256(payload).digest()).digest()[:4]
+    checksum = hashlib.sha256(hashlib.sha256(b'').digest()).digest()[:4]
 
     msg = Message('TEST', payload, magic=magic)
 
@@ -68,7 +68,7 @@ def test_verack():
     to_compare = {'checksum': checksum,
                   'magic': magic,
                   'command': 'verack',
-                  'payload': b'',
+                  'payload': {},
                   'length': 0}
 
     assert msg.decode(msg.encode()) == to_compare

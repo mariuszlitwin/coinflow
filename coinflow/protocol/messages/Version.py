@@ -4,6 +4,7 @@
 import struct
 import random
 from datetime import datetime, timezone
+from typing import Dict, Any, NewType
 
 from .Message import Message
 import coinflow.protocol.structs as structs
@@ -88,13 +89,14 @@ class Version(Message):
         dict
             Decoded payload
         """
-        ua_len = len(payload) - struct.calcsize(
-                                    cls.MESSAGE_FMT.replace('{ua_len}s', ''))
-        fmt = cls.MESSAGE_FMT.format(ua_len=ua_len)
+        ua_len = (len(payload) -
+                  struct.calcsize(cls.MESSAGE_FMT.replace('{ua_len}s',
+                                                          '')))  # type: int
+        fmt = cls.MESSAGE_FMT.format(ua_len=ua_len)  # type: str
         parsed = dict(zip(('version', 'services', 'timestamp', 'addr_recv',
                            'addr_from', 'nonce', 'user_agent', 'start_height',
                            'relay'),
-                          struct.unpack(fmt, payload)))
+                      struct.unpack(fmt, payload)))  # type: Dict[str, Any]
         parsed['timestamp'] = structs.ts2dt(parsed['timestamp'])
         parsed['addr_recv'] = structs.netaddr2socket(parsed['addr_recv'])
         parsed['addr_from'] = structs.netaddr2socket(parsed['addr_from'])
@@ -123,7 +125,7 @@ class Version(Message):
         parsed['addr_from'] = (parsed['addr_from']['ipaddr'],
                                parsed['addr_from']['port'])
         parsed['user_agent'], _ = parsed['user_agent']
-        parsed['user_agent'] = parsed['user_agent'].decode('utf-8')
+        parsed['user_agent'] = parsed['user_agent']
         return parsed
 
     def encode_payload(self, payload: dict = None) -> bytes:
@@ -141,7 +143,7 @@ class Version(Message):
             encoded payload
         """
         p = payload or self.payload
-        user_agent = bytes(p['user_agent'] or self.USER_AGENT)
+        user_agent = str(p['user_agent'] or self.USER_AGENT)
         ua_length = len(structs.str2varstr(user_agent))
         version = p['version'] or self.VERSION
         return struct.pack(self.MESSAGE_FMT.format(ua_len=ua_length),

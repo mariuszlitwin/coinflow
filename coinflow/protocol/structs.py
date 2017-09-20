@@ -5,6 +5,7 @@ import struct
 import time
 
 import socket
+from hashlib import sha256
 from datetime import datetime, timezone
 
 from typing import Tuple, Dict, Union, NewType
@@ -15,6 +16,23 @@ VarStr = NewType('VarStr', Tuple[str, int])
 """Type of decoded VarStr, pair of (string, length)"""
 Socket = NewType('Socket', Tuple[str, int])
 """Type of socket address, pair of (inet_aton_addr, port)"""
+
+
+def dsha256(p: bytes) -> bytes:
+    """
+    Calculate double sha256 hash
+
+    Parameters
+    ----------
+    p : bytes
+        payload to hash
+
+    Returns
+    -------
+    bytes
+        double sha256 hash of payload
+    """
+    return sha256(sha256(p).digest()).digest()
 
 
 def int2varint(n: int) -> bytes:
@@ -55,7 +73,7 @@ def varint2int(n: bytes) -> Tuple[int, int]:
     tuple(int, int)
         Decoded integer and it's length
     """
-    n0 = n[0] # type: int
+    n0 = n[0]  # type: int
     if n0 < 0xfd:
         return (n0, 1)
     elif n0 == 0xfd:
@@ -97,7 +115,7 @@ def varstr2str(s: bytes) -> Tuple[str, int]:
     tuple(str, int)
         Decoded string and it's length
     """
-    (n, length) = varint2int(s) # type: Tuple[int, int]
+    (n, length) = varint2int(s)  # type: Tuple[int, int]
     return (s[length:length+n].decode('utf-8'), length+n)
 
 
@@ -127,8 +145,8 @@ def socket2netaddr(ipaddr: str, port: int, services: int = 0,
     bytes
         Encoded socket address
     """
-    ts = dt2ts(timestamp or datetime.now(timezone.utc)) # type: int
-    payload = bytearray() # type: bytearray
+    ts = dt2ts(timestamp or datetime.now(timezone.utc))  # type: int
+    payload = bytearray()  # type: bytearray
     payload.extend(struct.pack('<L', ts) if with_ts else b'')
     payload.extend(struct.pack('<Q', services))
     payload.extend(b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff')
@@ -153,7 +171,7 @@ def netaddr2socket(n: bytes) -> Dict[str, Union[datetime, int, str]]:
         dict with all parsed fields (timestamp, services, ipaddr, port)
     """
     assert len(n) == 26 or len(n) == 30
-    p = dict() # type: Dict[str, Union[datetime, int, str]]
+    p = dict()  # type: Dict[str, Union[datetime, int, str]]
     if len(n) != 26:
         p['timestamp'] = ts2dt(struct.unpack('<L', n[:4])[0])
         n = n[4:]
