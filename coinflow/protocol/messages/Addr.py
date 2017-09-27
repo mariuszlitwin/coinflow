@@ -5,8 +5,9 @@ import struct
 import hashlib
 import random
 
-from typing import Sequence, Tuple, List, Dict, NewType, Union
 from datetime import datetime
+from operator import itemgetter
+from typing import Sequence, Tuple, List, Dict, NewType, Union, overload
 
 from .Message import Message, MessageMeta
 import coinflow.protocol.structs as structs
@@ -24,8 +25,7 @@ class Addr(Message):
     """
     ADDR_FMT = '<L26s'  # type: str
 
-    def __init__(self, addr_list: Sequence[Tuple[int, structs.Socket]],
-                 *args, **kwargs) -> None:
+    def __init__(self, addr_list: AddrList, *args, **kwargs) -> None:
         """
         Constructor for 'Addr' class.
 
@@ -81,6 +81,9 @@ class Addr(Message):
             encoded payload
         """
         p = payload or self.payload  # type: Dict[str, AddrList]
+        p['addr_list'] = sorted(p['addr_list'],
+                                key=itemgetter('timestamp'),
+                                reverse=True)[:2500]
         addr_list = bytearray()  # type: bytearray
         addr_list.extend(structs.int2varint(len(p['addr_list'])))
         for a in p['addr_list']:
