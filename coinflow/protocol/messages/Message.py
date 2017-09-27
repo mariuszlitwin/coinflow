@@ -4,13 +4,14 @@
 import struct
 import coinflow.protocol.structs as structs
 
-from typing import Dict, Any, NewType
+from abc import ABCMeta, abstractmethod
+from typing import Dict, Any, Optional, NewType, cast
 
 
 MsgGenericPayload = NewType('MsgGenericPayload', Dict[str, Any])
 
 
-class MessageMeta(object):
+class MessageMeta(metaclass=ABCMeta):
     pass
 
 
@@ -29,8 +30,8 @@ class Message(MessageMeta):
     HEADER_FMT = '<L12sL4s'  # type: str
     """Format string used in pack and unpack during message creation"""
 
-    def __init__(self, command: str, payload: Dict[str, Any],
-                 magic: int = None, checksum: bytes = None,
+    def __init__(self, command: str, payload: Optional[MsgGenericPayload],
+                 magic: Optional[int] = None, checksum: Optional[bytes] = None,
                  *args, **kwargs) -> None:
         """
         Constructor for 'Message' class.
@@ -55,7 +56,8 @@ class Message(MessageMeta):
         """
         self.MAGIC = int(magic or self.MAGIC)  # type: int
         self.command = command.lower()  # type: str
-        self.payload = payload  # type: Dict[str, Any]
+        self.payload = cast(MsgGenericPayload,
+                            payload or {})  # type: MsgGenericPayload
         enc = self.encode_payload(payload)  # type: bytes
         self.checksum = (checksum or
                          structs.dsha256(enc)[0:4])  # type: bytes
@@ -179,14 +181,14 @@ class Message(MessageMeta):
         """
         h_len = struct.calcsize(cls.HEADER_FMT)  # type: int
         parsed = dict(zip(('magic', 'command', 'length', 'checksum'),
-                      struct.unpack(cls.HEADER_FMT,
-                                    buf[:h_len])))  # type: MsgGenericPayload
+                      struct.unpack(cls.HEADER_FMT, buf[:h_len])))
         parsed['payload'] = cls.decode_payload(buf[h_len:])
         parsed['command'] = parsed['command'].replace(b'\x00', b'')\
                                              .decode('utf-8')
         return parsed
 
     @classmethod
+    @abstractmethod
     def decode_payload(cls, payload: bytes) -> MsgGenericPayload:
         """
         Decode payload field of message.
@@ -203,7 +205,7 @@ class Message(MessageMeta):
         dict
             Decoded payload
         """
-        return dict()
+        pass
 
     def encode(self) -> bytes:
         """
@@ -216,7 +218,9 @@ class Message(MessageMeta):
         """
         return bytes(self)
 
-    def encode_payload(self, payload: MsgGenericPayload = None) -> bytes:
+    @abstractmethod
+    def encode_payload(self,
+                       payload: Optional[MsgGenericPayload] = None) -> bytes:
         """
         Encode payload field of message.
 

@@ -8,22 +8,6 @@ import hashlib
 
 from coinflow.protocol.messages import Message, Version, Verack, Addr
 
-def test_message():
-    magic = 0xdeadbeaf
-    payload = {}
-    magic = 0xdeadbeaf
-    checksum = hashlib.sha256(hashlib.sha256(b'').digest()).digest()[:4]
-
-    msg = Message('TEST', payload, magic=magic)
-
-    to_compare = {'checksum': checksum,
-                  'magic': magic,
-                  'length': len(payload),
-                  'payload': payload,
-                  'command': 'test'}
-
-    assert msg.decode(msg.encode()) == to_compare
-
 def test_version():
     version = 70001
     services = 0

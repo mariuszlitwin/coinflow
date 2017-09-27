@@ -4,7 +4,7 @@
 import struct
 import random
 from datetime import datetime, timezone
-from typing import Dict, Any, NewType
+from typing import Dict, Any, Optional
 
 from .Message import Message, MsgGenericPayload
 import coinflow.protocol.structs as structs
@@ -24,9 +24,10 @@ class Version(Message):
     """User agent of coinflow node"""
 
     def __init__(self, addr_recv: tuple, addr_from: tuple,
-                 version: int = None, services: int = 0,
+                 version: Optional[int] = None, services: int = 0,
                  timestamp: datetime = datetime.now(timezone.utc),
-                 nonce: int = random.getrandbits(64), user_agent: str = None,
+                 nonce: int = random.getrandbits(64),
+                 user_agent: Optional[str] = None,
                  start_height: int = 0, relay: bool = True,
                  *args, **kwargs) -> None:
         """
@@ -128,7 +129,8 @@ class Version(Message):
         parsed['user_agent'] = parsed['user_agent']
         return parsed
 
-    def encode_payload(self, payload: MsgGenericPayload = None) -> bytes:
+    def encode_payload(self,
+                       payload: Optional[MsgGenericPayload] = None) -> bytes:
         """
         Encode payload field of message.
 

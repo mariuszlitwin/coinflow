@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from .Message import Message
+from .Message import Message, MsgGenericPayload
+from typing import Optional
 
 
 class Verack(Message):
@@ -22,3 +23,19 @@ class Verack(Message):
             'Verack' object
         """
         super(Verack, self).__init__('verack', None, *args, **kwargs)
+
+    @classmethod
+    def decode_payload(cls, payload: bytes) -> MsgGenericPayload:
+        """
+        Verack should not have payload so this method will just ignore
+        anything you will pass to it and return empty dict
+        """
+        return dict()
+
+    def encode_payload(self,
+                       payload: Optional[MsgGenericPayload] = None) -> bytes:
+        """
+        Verack should not have payload so this method will just ignore
+        anything you will pass to it and return empty bytes object
+        """
+        return b''

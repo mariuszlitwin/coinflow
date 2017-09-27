@@ -8,7 +8,7 @@ import socket
 from hashlib import sha256
 from datetime import datetime, timezone
 
-from typing import Tuple, Dict, Union, NewType
+from typing import Tuple, Dict, Union, Optional, NewType
 
 VarInt = NewType('VarInt', Tuple[int, int])
 """Type of decoded VarInt, pair of (actual_integer, length)"""
@@ -115,12 +115,13 @@ def varstr2str(s: bytes) -> Tuple[str, int]:
     tuple(str, int)
         Decoded string and it's length
     """
-    (n, length) = varint2int(s)  # type: Tuple[int, int]
+    (n, length) = varint2int(s)  # type: int, int
     return (s[length:length+n].decode('utf-8'), length+n)
 
 
 def socket2netaddr(ipaddr: str, port: int, services: int = 0,
-                   with_ts: bool = True, timestamp: datetime = None) -> bytes:
+                   with_ts: bool = True,
+                   timestamp: Optional[datetime] = None) -> bytes:
     """
     Encode socket address (ip, port) to Bitcoin's netaddr structure
 
@@ -154,7 +155,7 @@ def socket2netaddr(ipaddr: str, port: int, services: int = 0,
     return bytes(payload)
 
 
-def netaddr2socket(n: bytes) -> Dict[str, Union[datetime, int, str]]:
+def netaddr2socket(n: bytes) -> Dict[str, Union[datetime, int, str, None]]:
     """
     Decode socket address (ip, port) from Bitcoin's netaddr structure
 
@@ -171,7 +172,7 @@ def netaddr2socket(n: bytes) -> Dict[str, Union[datetime, int, str]]:
         dict with all parsed fields (timestamp, services, ipaddr, port)
     """
     assert len(n) == 26 or len(n) == 30
-    p = dict()  # type: Dict[str, Union[datetime, int, str]]
+    p = dict()  # type: Dict[str, Union[datetime, int, str, None]]
     if len(n) != 26:
         p['timestamp'] = ts2dt(struct.unpack('<L', n[:4])[0])
         n = n[4:]
