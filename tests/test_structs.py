@@ -39,18 +39,14 @@ def test_netaddr():
     (ipaddr, port) = ('127.0.0.1', 8333)
     timestamp = datetime.now(timezone.utc).replace(microsecond=0)
 
-    basic = socket2netaddr(ipaddr, port, timestamp=timestamp)
-    no_timestamp = socket2netaddr(ipaddr, port, services=1, with_ts=False)
+    basic = netaddr(ipaddr, port, 0)
+    no_timestamp = netaddr(ipaddr, port, services=1)
 
-    assert netaddr2socket(basic) == {'timestamp': timestamp,
-                                     'services': 0,
-                                     'ipaddr': ipaddr,
-                                     'port': port}
-    assert netaddr2socket(no_timestamp) == {'timestamp': None,
-                                            'services': 1,
-                                            'ipaddr': ipaddr,
-                                            'port': port}
-    
+    basic_c = netaddr.from_raw(basic.encode())
+    nts_c = netaddr.from_raw(no_timestamp.encode())
+
+    assert basic_c.__dict__ == basic.__dict__
+    assert nts_c.__dict__ == no_timestamp.__dict__
 
 def test_timestamp():
     notz = datetime.now()

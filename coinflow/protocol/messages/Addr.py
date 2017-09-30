@@ -6,14 +6,13 @@ import hashlib
 import random
 
 from datetime import datetime
-from operator import itemgetter
+from operator import attrgetter
 from typing import Sequence, Tuple, List, Dict, NewType, Union, overload
 
 from .Message import Message, MessageMeta
 import coinflow.protocol.structs as structs
 
-AddrEntry = NewType('AddrEntry', Dict[str, Union[datetime, structs.Socket]])
-AddrList = NewType('AddrList', List[AddrEntry])
+AddrList = NewType('AddrList', List[structs.netaddr])
 
 
 class Addr(Message):
@@ -23,7 +22,6 @@ class Addr(Message):
     .. Message structure in Bitcoin wiki:
        https://en.bitcoin.it/wiki/Protocol_documentation#addr
     """
-    ADDR_FMT = '<L26s'  # type: str
 
     def __init__(self, addr_list: AddrList, *args, **kwargs) -> None:
         """
@@ -57,12 +55,7 @@ class Addr(Message):
         for addr in (payload[i:i+30] for i in range(prefix,
                                                     a_len*30,
                                                     30)):
-            (ts, a) = struct.unpack(cls.ADDR_FMT,
-                                    addr)  # type: Tuple[int, bytes]
-            netaddr = structs.netaddr2socket(a)
-            del netaddr['timestamp']
-            addr_list.append({'timestamp': structs.ts2dt(ts),
-                              'addr': netaddr})
+            addr_list.append(structs.netaddr.from_raw(addr))
 
         return {'addr_list': addr_list}
 
@@ -82,12 +75,12 @@ class Addr(Message):
         """
         p = payload or self.payload  # type: Dict[str, AddrList]
         p['addr_list'] = sorted(p['addr_list'],
-                                key=itemgetter('timestamp'),
+                                key=attrgetter('timestamp'),
                                 reverse=True)[:2500]
+
         addr_list = bytearray()  # type: bytearray
         addr_list.extend(structs.int2varint(len(p['addr_list'])))
         for a in p['addr_list']:
-            addr_list.extend(struct.pack(self.ADDR_FMT,
-                                         structs.dt2ts(a['timestamp']),
-                                         structs.socket2netaddr(*a['addr'])))
+            addr_list.extend(a.encode())
+
         return bytes(addr_list)

@@ -2,18 +2,20 @@
 # -*- coding: utf-8 -*-
 
 import pytest
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import socket
 import hashlib
+from operator import attrgetter
 
 from coinflow.protocol.messages import Message, Version, Verack, Addr
+from coinflow.protocol.structs import netaddr
 
 def test_version():
     version = 70001
     services = 0
     timestamp = datetime.now(timezone.utc).replace(microsecond=0)
-    addr_recv = ('8.8.8.8', 8333)
-    addr_from = ('127.0.0.1', 8333)
+    addr_recv = netaddr('8.8.8.8', 8333, 0)
+    addr_from = netaddr('127.0.0.1', 8333, 0)
     nonce = 0xdeadbeaf
     user_agent = 'coinflow test'
     start_height = 1337
@@ -58,4 +60,32 @@ def test_verack():
     assert msg.decode(msg.encode()) == to_compare
 
 def test_addr():
-    pass
+    magic = 0xdeadbeaf
+    addr_list = list()
+    checksum = b'5\x08uk'
+
+    for i in range(1, 16, 1):
+        for j in range(1, 255, 1):
+            (ip, port) = ('192.168.{}.{}'.format(i, j), i*j)
+            dt = datetime(2008, 10, 31, 0, 0, 0, 0, timezone.utc)
+
+            if (i % 2 == 0) and (j % 2 == 0):
+                td = timedelta(days=i, hours=j)
+            else:
+                td = timedelta(days=-i, hours=-j)
+            
+            addr_list.append(netaddr(ip, port, j % 2, dt + td))
+
+    msg = Addr(addr_list=addr_list, magic=magic)
+
+    to_compare = {'command': 'addr',
+                  'length': 75003,
+                  'checksum': checksum,
+                  'magic': magic,
+                  'payload': {
+                      'addr_list': sorted(addr_list,
+                                          key=attrgetter('timestamp'),
+                                          reverse=True)[:2500]
+                  }}
+
+    assert msg.decode(msg.encode()) == to_compare

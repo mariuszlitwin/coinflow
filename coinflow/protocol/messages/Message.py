@@ -62,6 +62,9 @@ class Message(MessageMeta):
         self.checksum = (checksum or
                          structs.dsha256(enc)[0:4])  # type: bytes
 
+    def __eq__(self, other) -> bool:
+        return self.__dict__ == other.__dict__
+
     def __bytes__(self) -> bytes:
         payload = self.encode_payload(self.payload)  # type: bytes
         return struct.pack(self.HEADER_FMT, self.MAGIC,

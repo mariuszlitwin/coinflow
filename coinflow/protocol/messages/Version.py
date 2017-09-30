@@ -23,7 +23,7 @@ class Version(Message):
     USER_AGENT = 'coinflow analyzer 0.0.1'  # type: str
     """User agent of coinflow node"""
 
-    def __init__(self, addr_recv: tuple, addr_from: tuple,
+    def __init__(self, addr_recv: structs.netaddr, addr_from: structs.netaddr,
                  version: Optional[int] = None, services: int = 0,
                  timestamp: datetime = datetime.now(timezone.utc),
                  nonce: int = random.getrandbits(64),
@@ -35,12 +35,10 @@ class Version(Message):
 
         Parameters
         ----------
-        addr_recv : tuple
-            tuple of (ipaddr, port) of remote node. IP has to be IPv4 processed
-            by socket.inet_aton()
-        addr_from : tuple
-            tuple of (ipaddr, port) of local node. IP has to be IPv4 processed
-            by socket.inet_aton()
+        addr_recv : coinflow.protocol.structs.netaddr
+            address of remote node
+        addr_from : coinflow.protocol.structs.netaddr
+            address of local node
         version: int
             version mumber to be used instead of default one
             should be used only in specific cases (e.g.: Message from bytes
@@ -62,12 +60,11 @@ class Version(Message):
         relay : bool
             boolean flag indicating whether remote peer should annouce
             relayed txs
-
-        Returns
-        -------
-        Version
-            'Version' object
         """
+        # There should be no timestamp in 'Version' message
+        addr_from.timestamp = None
+        addr_recv.timestamp = None
+
         kwargs['payload'] = {'version': self.VERSION, 'services': services,
                              'timestamp': timestamp, 'addr_recv': addr_recv,
                              'addr_from': addr_from, 'nonce': nonce,
@@ -76,7 +73,7 @@ class Version(Message):
         super(Version, self).__init__('version', *args, **kwargs)
 
     @classmethod
-    def decode_payload_raw(cls, payload: bytes) -> MsgGenericPayload:
+    def decode_payload(cls, payload: bytes) -> MsgGenericPayload:
         """
         Decode message content from 'payload' field keeping all metadata
 
@@ -99,34 +96,9 @@ class Version(Message):
                            'relay'),
                       struct.unpack(fmt, payload)))  # type: MsgGenericPayload
         parsed['timestamp'] = structs.ts2dt(parsed['timestamp'])
-        parsed['addr_recv'] = structs.netaddr2socket(parsed['addr_recv'])
-        parsed['addr_from'] = structs.netaddr2socket(parsed['addr_from'])
-        parsed['user_agent'] = structs.varstr2str(parsed['user_agent'])
-        return parsed
-
-    @classmethod
-    def decode_payload(cls, payload: bytes) -> MsgGenericPayload:
-        """
-        Decode message content from 'payload' field
-
-        Parameters
-        ----------
-        payload : bytes
-            Raw payload to decode
-
-        Returns
-        -------
-        dict
-            Decoded payload
-        """
-        parsed = cls.decode_payload_raw(payload)  # type: MsgGenericPayload
-
-        parsed['addr_recv'] = (parsed['addr_recv']['ipaddr'],
-                               parsed['addr_recv']['port'])
-        parsed['addr_from'] = (parsed['addr_from']['ipaddr'],
-                               parsed['addr_from']['port'])
-        parsed['user_agent'], _ = parsed['user_agent']
-        parsed['user_agent'] = parsed['user_agent']
+        parsed['addr_recv'] = structs.netaddr.from_raw(parsed['addr_recv'])
+        parsed['addr_from'] = structs.netaddr.from_raw(parsed['addr_from'])
+        parsed['user_agent'], _ = structs.varstr2str(parsed['user_agent'])
         return parsed
 
     def encode_payload(self,
@@ -151,9 +123,7 @@ class Version(Message):
         return struct.pack(self.MESSAGE_FMT.format(ua_len=ua_length),
                            self.VERSION, p['services'],
                            structs.dt2ts(p['timestamp']),
-                           structs.socket2netaddr(*p['addr_recv'],
-                                                  with_ts=False),
-                           structs.socket2netaddr(*p['addr_from'],
-                                                  with_ts=False),
+                           p['addr_recv'].encode(),
+                           p['addr_from'].encode(),
                            p['nonce'], structs.str2varstr(user_agent),
                            p['start_height'], p['relay'])
